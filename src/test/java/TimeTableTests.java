@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 //import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
@@ -65,7 +66,12 @@ public class TimeTableTests {
     @Test
     public void testRandomAssignment() {
         TimeTable timeTable = this.timeTables.get(0);
+        Collections.sort(timeTable.activities);
         System.out.println(timeTable.activities);
+//        System.out.println(timeTable.activities.size());
+//        for (int i=0; i<timeTable.activities.size(); i++){
+//            System.out.println(timeTable.activities.get(i));
+//        }
 //        timeTable.randomlyAssignActivitiesToStartTimes();
 
 

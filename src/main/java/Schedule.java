@@ -17,17 +17,24 @@ public class Schedule {
     public Schedule(Path dataFile, int T) throws IOException, ClassNotFoundException {
         this.dataFile = dataFile;
         this.T = T;
-        this.activities = this.getActivities();
-//        this.activities = activities;
-//        this.makeTimeTables();
+        this.activities = this.readActivities();
 
     }
 
-    public ArrayList<Activity> getActivities() throws IOException {
+    /**
+     * read activities from txt file
+     * @return
+     * @throws IOException
+     */
+    public ArrayList<Activity> readActivities() throws IOException {
         Parser p = new Parser(this.dataFile);
         return p.readFile();
     }
 
+    /**
+     * Split activities into T time tables
+     * @return
+     */
     public ArrayList<TimeTable> makeTimeTables() {
         ArrayList<ArrayList<Activity>> activitiesSet = new ArrayList<>();
         int i;

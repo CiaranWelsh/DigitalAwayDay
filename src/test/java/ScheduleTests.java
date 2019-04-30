@@ -39,17 +39,6 @@ public class ScheduleTests {
     }
 
 
-    @Test
-    public void testFixedParameters() throws IOException, ClassNotFoundException {
-
-//        Instant instant = new Instant(15.0);
-        ;
-//        HashMap<String, HashMap<Instant, Instant>> fixedTimeSlots = new HashMap<>();
-//        fixedTimeSlots.put('before', HashMap<Instant(12:00)>)
-//
-//        Schedule schedule = new Schedule(this.dataFile, 2);
-
-    }
 
 
 }

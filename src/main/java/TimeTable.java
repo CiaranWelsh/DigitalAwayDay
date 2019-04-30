@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
@@ -20,14 +21,20 @@ public class TimeTable {
     // todo implement TimeTable so that it accepts an array as argument
     public TimeTable(ArrayList<Activity> activities) {
         this.activities = activities;
+        this.activities = this.randomlyAssignActivitiesToStartTimes();
+//        this.activities = Collections.sort(this.activities);
     }
 
     private void calculateScore() {
         ;
     }
 
-    public Integer getShortestDuration() {
-        // get the shortest duration in our list of activities
+    /**
+     * Get the shortest duration in the list of activities
+     *
+     * @return
+     */
+    private Integer getShortestDuration() {
         Integer shortestDuration = 10000;
         for (int i = 0; i < this.activities.size(); i++) {
             if (this.activities.get(i).duration.toMin() < shortestDuration)
@@ -36,8 +43,12 @@ public class TimeTable {
         return shortestDuration;
     }
 
+    /**
+     * get list of valid starting times in multiples of shortest session
+     *
+     * @return
+     */
     private ArrayList<Integer> getValidMorningTimes() {
-        // get morning session available starting slots in multiples of shortest session
         int morningSessMin = this.morningSess.toMin();
         ArrayList<Integer> validMorningTimes = new ArrayList<>();
         for (int i = 0; i < morningSessMin; i += this.getShortestDuration()) {
@@ -46,6 +57,11 @@ public class TimeTable {
         return validMorningTimes;
     }
 
+    /**
+     * get list of valid starting times in multiples of shortest session
+     *
+     * @return
+     */
     private ArrayList<Integer> getValidAfternoonTimes() {
         // get afternoon session available starting slots in multiples of shortest session
         int afternoonSessMin = this.afternoonSess.toMin();
@@ -57,8 +73,8 @@ public class TimeTable {
     }
 
     /**
-     * Find out what lowest duration is on the list
-     * and produce an array of valid start times
+     * assemble valid morning and afternoon starting slots
+     * into HashMap
      *
      * @return
      */
@@ -72,54 +88,61 @@ public class TimeTable {
         return result;
     }
 
-    private String sampleMorningOrAfternoon() {
+    /**
+     * randomly pick morning or afternoon with equal probability
+     *
+     * @return
+     */
+    private HashMap<String, Time> sampleStartTime() {
+        HashMap<String, Time> result = new HashMap<>();
+
+        String session;
+        Time timeStart = new Time(0, 0, 0);
         int values[] = {0, 1};
         double probs[] = {0.5, 0.5};
-        String session;
         EnumeratedIntegerDistribution dist = new EnumeratedIntegerDistribution(values, probs);
         if (dist.sample() == 1) {
             session = "morning";
         } else {
             session = "afternoon";
         }
-        return session;
+        if (session.equals("morning"))
+            timeStart = new Time(9, 0, 0);
+        else if (session.equals("afternoon"))
+            timeStart = new Time(13, 0, 0);
+        else
+            try {
+                throw new Exception("bad");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        result.put(session, timeStart);
+        return result;
     }
 
     /**
-     * Randomly select morning or afternoon
-     * then randomly pick a number without replacement.
+     * Randomly assign activities to start times
      *
      * @return
      */
-    public void randomlyAssignActivitiesToStartTimes() {
-        // place to store potential starting times
+    public ArrayList<Activity> randomlyAssignActivitiesToStartTimes() {
         HashMap<String, ArrayList<Integer>> potentialStartTimes = this.getValidStartTimes();
-        // place to store assigned time table
-
-        // start of session (morning or evening)
+        ArrayList<Activity> newActivities = new ArrayList<>();
         Time timeStart = new Time(0, 0, 0);
-        // placeholder for starting time of each activity that is assigned
-        Time activityTimeStart;
+        HashMap<String, Time> activityTimeStart;
         int values[] = {0, 1};
         double probs[] = {0.5, 0.5};
         // iterate over number of activities
         for (int i = 0; i < activities.size(); i++) {
 
-            String session = this.sampleMorningOrAfternoon();
-            if (session.equals("morning"))
-                timeStart = new Time(9, 0, 0);
-            else if (session.equals("afternoon"))
-                timeStart = new Time(13, 0, 0);
-            else
-                try{
-                    throw new Exception("bad");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            activityTimeStart = this.sampleStartTime();
+            String session = (String) activityTimeStart.keySet().toArray()[0];
+            Time startTime = (Time) activityTimeStart.values().toArray()[0];
+
             // for each available time slot in chosen session, assign activity i
             ArrayList<Integer> allPotentialIndexes = new ArrayList<>();
             ArrayList<Double> probVec = new ArrayList<>();
-            for (Integer j = 0; j < activities.size(); j++) {
+            for (int j = 0; j < activities.size(); j++) {
                 allPotentialIndexes.add(j);
                 probVec.add(1.0 / potentialStartTimes.get(session).size());
             }
@@ -131,20 +154,26 @@ public class TimeTable {
             // get start time from chosen session
             int idx = dist2.sample();
             Integer activityStartTimeInMinutesAfterStartTime = potentialStartTimes.get(session).get(idx);
-
-            potentialStartTimes.remove(idx);
-            activityTimeStart = timeStart.add(new Time(0, activityStartTimeInMinutesAfterStartTime, 0));
-            activities.get(idx).startTime = activityTimeStart;
+            Time activityStartTime = startTime.add(new Time(0, activityStartTimeInMinutesAfterStartTime, 0));
+            activities.get(i).startTime = activityStartTime;
+            newActivities.add(activities.get(i));
+            activities.remove(i);
         }
-//        return activities;
+        return newActivities;
     }
 
+    /**
+     * get the earliest time available in activities
+     *
+     * @param activities
+     * @return
+     */
     public static Activity getEarliestTime(ArrayList<Activity> activities) {
         Activity activity = activities.get(0);
         if (activity.startTime.equals(null))
             try {
                 throw new Exception("Cannot sort before schedules have been assigned");
-            } catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         for (int i = 1; i < activities.size(); i++) {
@@ -154,18 +183,6 @@ public class TimeTable {
             }
         }
         return activity;
-    }
-
-
-    public ArrayList<Activity> sort() {
-        ArrayList<Activity> sorted = new ArrayList<>();
-        Activity activity = this.activities.get(0);
-        while (!this.activities.isEmpty()){
-            Activity earliestActivity = TimeTable.getEarliestTime(this.activities);
-            sorted.add(earliestActivity);
-            this.activities.remove(earliestActivity);
-        }
-        return sorted;
     }
 
     /**
@@ -179,7 +196,7 @@ public class TimeTable {
     }
 
 
-    public int size(){
+    public int size() {
         return this.activities.size();
     }
 
