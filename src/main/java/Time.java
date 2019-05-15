@@ -23,7 +23,7 @@ public class Time {
 
         if (this.hour > 23) {
             try {
-                throw new Exception();
+                throw new Exception(String.format("Hour cannot be >23. Got %d", this.hour));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -33,11 +33,11 @@ public class Time {
     }
 
     public String toString() {
-        return String.format("Time(hour=%d, minutes=%d, seconds=%d)",
+        return String.format("%02d:%02d:%02d",
                 this.hour, this.minutes, this.seconds);
     }
 
-    public Time diff(Time that) {
+    public Time minus(Time that) {
         Integer h_diff = this.hour - that.hour;
         Integer m_diff = this.minutes - that.minutes;
         Integer s_diff = this.seconds - that.seconds;
@@ -46,7 +46,7 @@ public class Time {
         return time;
     }
 
-    public Time add(Time that){
+    public Time plus(Time that){
         Integer h_plus = this.hour + that.hour;
         Integer m_plus = this.minutes + that.minutes;
         Integer s_plus = this.seconds + that.seconds;
@@ -79,6 +79,9 @@ public class Time {
 
     public int toMin(){
         return this.hour*60 + this.minutes;
+    }
+    public int toSeconds(){
+        return this.toMin()*60 + this.seconds;
     }
 
 

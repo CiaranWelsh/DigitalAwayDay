@@ -30,11 +30,20 @@ public class ScheduleTests {
     }
 
     @Test
-    public void makeTimeTables() throws IOException, ClassNotFoundException {
+    public void makeTimeTablesTestSize() throws IOException, ClassNotFoundException {
         Schedule schedule = new Schedule(this.dataFile, 2);
         ArrayList<TimeTable> timeTables = schedule.makeTimeTables();
         int expected = 2;
         int actual = timeTables.size();
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void makeTimeTablesTestTimeTableSize() throws IOException, ClassNotFoundException {
+        Schedule schedule = new Schedule(this.dataFile, 2);
+        ArrayList<TimeTable> timeTables = schedule.makeTimeTables();
+        int expected = 10;
+        int actual = timeTables.get(1).size();
         assertEquals(expected, actual);
     }
 

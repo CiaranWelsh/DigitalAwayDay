@@ -35,6 +35,7 @@ public class TimeTableTests {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+        System.out.println(schedule.activities.size());
         this.timeTables = schedule.makeTimeTables();
 
     }
@@ -42,8 +43,8 @@ public class TimeTableTests {
     @Test
     public void testGetValidStartTimes() {
         TimeTable timeTable = this.timeTables.get(0);
-        HashMap<String, ArrayList<Integer>> valid = timeTable.getValidStartTimes();
-        int actual = valid.get("morning").get(3);
+        ArrayList<Time> valid = timeTable.getValidStartTimes();
+        Time actual = valid.get(3);
         int expected = 45;
         assertEquals(expected, actual);
     }
@@ -51,32 +52,25 @@ public class TimeTableTests {
     @Test
     public void testSize() {
         TimeTable timeTable = this.timeTables.get(0);
-        int expected = 7;
+        int expected = 10;
         int actual = timeTable.size();
         assertEquals(expected, actual);
     }
-    @Test
-    public void testGetEarliestTime() {
-        TimeTable timeTable = this.timeTables.get(0);
-        Activity earliestTime = TimeTable.getEarliestTime(timeTable.activities);
-        System.out.println(earliestTime.startTime);
-    }
+//    @Test
+//    public void testGetEarliestTime() {
+//        TimeTable timeTable = this.timeTables.get(0);
+//        Activity earliestTime = TimeTable.getEarliestTime(timeTable.activities);
+//        System.out.println(earliestTime.startTime);
+//    }
 
 
     @Test
     public void testRandomAssignment() {
-        TimeTable timeTable = this.timeTables.get(0);
-        Collections.sort(timeTable.activities);
-        System.out.println(timeTable.activities);
-//        System.out.println(timeTable.activities.size());
-//        for (int i=0; i<timeTable.activities.size(); i++){
-//            System.out.println(timeTable.activities.get(i));
-//        }
-//        timeTable.randomlyAssignActivitiesToStartTimes();
-
-
-//        System.out.println(sortedActivities.get(0).startTime);
-//        ArrayList<Activity> sortedActivities = timeTable.sort();
+        TimeTable timeTable1 = this.timeTables.get(0);
+        TimeTable timeTable2 = this.timeTables.get(1);
+        System.out.println(timeTable1.size());
+        System.out.println(timeTable2.size());
+        ;
 
     }
 

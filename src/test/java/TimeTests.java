@@ -8,7 +8,7 @@ public class TimeTests {
     public void testDiff(){
         Time time1 = new Time(9, 0, 0);
         Time time2 = new Time(10, 0, 0);
-        Time diff = time1.diff(time2);
+        Time diff = time1.minus(time2);
         Integer expected = -1;
         Integer actual = diff.hour;
         assertEquals(expected, actual);
@@ -18,7 +18,7 @@ public class TimeTests {
     public void testAdd() {
         Time time1 = new Time(9, 0, 0);
         Time time2 = new Time(10, 0, 0);
-        Time sum = time1.add(time2);
+        Time sum = time1.plus(time2);
         Integer expected = 19;
         Integer actual = sum.hour;
         assertEquals(expected, actual);

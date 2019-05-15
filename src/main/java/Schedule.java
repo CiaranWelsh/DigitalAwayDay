@@ -1,6 +1,7 @@
 import java.io.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
 
@@ -8,10 +9,7 @@ public class Schedule {
 
     Path dataFile;
     int T;
-    HashMap<Path, Object> fixedTimeSlots = new HashMap<>();
     ArrayList<Activity> activities;
-
-    Time startTime = new Time(9, 0, 0);
 
 
     public Schedule(Path dataFile, int T) throws IOException, ClassNotFoundException {
@@ -36,26 +34,26 @@ public class Schedule {
      * @return
      */
     public ArrayList<TimeTable> makeTimeTables() {
-        ArrayList<ArrayList<Activity>> activitiesSet = new ArrayList<>();
+        ArrayList<ArrayList<Activity>> newActivities = new ArrayList<>();
         int i;
-        while (!activities.isEmpty()) {
+        while (!this.activities.isEmpty()) {
 
-            for (i = 0; i <= T; i++) {
+            for (i = 0; i < T; i++) {
 //                TimeTable timeTable = new TimeTable();
-                if (activitiesSet.size() < T) {
-                    activitiesSet.add(new ArrayList<>());
+                if (newActivities.size() < T) {
+                    newActivities.add(new ArrayList<>());
                 }
                 try {
-                    Activity activity = activities.remove(0);
-                    activitiesSet.get(i).add(activity);
+                    Activity activity = this.activities.remove(0);
+                    newActivities.get(i).add(activity);
                 } catch (IndexOutOfBoundsException e) {
                     break;
                 }
             }
         }
         ArrayList<TimeTable> timeTables = new ArrayList<>();
-        for (i = 0; i < activitiesSet.size(); i++) {
-            TimeTable timeTable = new TimeTable(activitiesSet.get(i));
+        for (i = 0; i < newActivities.size(); i++) {
+            TimeTable timeTable = new TimeTable(newActivities.get(i));
             timeTables.add(timeTable);
         }
         return timeTables;

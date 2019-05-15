@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 
 import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
@@ -13,20 +12,61 @@ public class TimeTable {
     Time afternoonStart = new Time(13, 0, 0);
     Time afternoonEnd = new Time(16, 0, 0);
     Time dayEnd = new Time(15, 0, 0);
-    Time morningSess = lunchStart.diff(dayStart);
-    Time afternoonSess = afternoonEnd.diff(afternoonStart);
+    Time morningSess = lunchStart.minus(dayStart);
+    Time afternoonSess = afternoonEnd.minus(afternoonStart);
 
     ArrayList<Activity> activities;
+    ArrayList<Time> potentialStartTimes;
 
-    // todo implement TimeTable so that it accepts an array as argument
+    // todo plus lunch and final hour into every activity list
+    // todo implement this as list of time objects
+
     public TimeTable(ArrayList<Activity> activities) {
         this.activities = activities;
+        potentialStartTimes = this.getValidStartTimes();
+
         this.activities = this.randomlyAssignActivitiesToStartTimes();
-//        this.activities = Collections.sort(this.activities);
+//        this.addFinalActivity();
+//        this.addLunchAsActivity();
+//        Collections.sort(this.activities);
     }
 
-    private void calculateScore() {
-        ;
+    private void addLunchAsActivity() {
+        Activity lunch = new Activity("lunch", 60);
+        lunch.startTime = new Time(12, 0, 0);
+        activities.add(lunch);
+    }
+
+    private void addFinalActivity() {
+        Activity finalActivity = new Activity("lastActivity", 60);
+        finalActivity.startTime = new Time(16, 0, 0);
+        activities.add(finalActivity);
+    }
+
+
+    public void computeScore() {
+        // need to iterate over 1 less than size of activities to get difference
+        //
+        int N = this.activities.size() - 1;
+        int minutesOverlap = 0;
+        Time endTimeOfCurrent;
+        Time startTimeOfNext;
+        for (int i = 0; i < N; i++) {
+            //end time of current
+            endTimeOfCurrent = this.activities.get(i).startTime.plus(this.activities.get(i).duration);
+            startTimeOfNext = this.activities.get(i + 1).startTime;
+//            System.out.println(String.format("end time of current= %s, start time of next=%s, minus=%s",
+//                    endTimeOfCurrent.toString(), startTimeOfNext.toString(),
+//                    endTimeOfCurrent.minus(startTimeOfNext).toString()));
+
+
+//            minutesOverlap += this.activities.get(i+1).startTime.minus(
+//                    this.activities.get(i).startTime).toMin();
+        }
+
+//        Activity k = activities.stream()
+//                .reduce(new Time(0, 0, 0),
+//                        (x, y) -> x.startTime.toMin() + y.startTime.toMin());
     }
 
     /**
@@ -48,11 +88,11 @@ public class TimeTable {
      *
      * @return
      */
-    private ArrayList<Integer> getValidMorningTimes() {
+    private ArrayList<Time> getValidMorningTimes() {
         int morningSessMin = this.morningSess.toMin();
-        ArrayList<Integer> validMorningTimes = new ArrayList<>();
+        ArrayList<Time> validMorningTimes = new ArrayList<>();
         for (int i = 0; i < morningSessMin; i += this.getShortestDuration()) {
-            validMorningTimes.add(i);
+            validMorningTimes.add(new Time(0, i, 0));
         }
         return validMorningTimes;
     }
@@ -62,12 +102,12 @@ public class TimeTable {
      *
      * @return
      */
-    private ArrayList<Integer> getValidAfternoonTimes() {
+    private ArrayList<Time> getValidAfternoonTimes() {
         // get afternoon session available starting slots in multiples of shortest session
         int afternoonSessMin = this.afternoonSess.toMin();
-        ArrayList<Integer> validAfternoonTimes = new ArrayList<>();
+        ArrayList<Time> validAfternoonTimes = new ArrayList<>();
         for (int i = 0; i < afternoonSessMin; i += this.getShortestDuration()) {
-            validAfternoonTimes.add(i);
+            validAfternoonTimes.add(new Time(0, i, 0));
         }
         return validAfternoonTimes;
     }
@@ -78,46 +118,68 @@ public class TimeTable {
      *
      * @return
      */
-    public HashMap<String, ArrayList<Integer>> getValidStartTimes() {
+    public ArrayList<Time> getValidStartTimes() {
+        HashMap<String, ArrayList<Time>> result = new HashMap<>();
+        Time nineAM = new Time(9, 0, 0);
+        Time onePM = new Time(13, 0, 0);
 
-        ArrayList<Integer> validMorningTimes = this.getValidMorningTimes();
-        ArrayList<Integer> validAfternoonTimes = this.getValidAfternoonTimes();
-        HashMap<String, ArrayList<Integer>> result = new HashMap<>();
-        result.put("morning", validMorningTimes);
-        result.put("afternoon", validAfternoonTimes);
-        return result;
+        ArrayList<Time> validMorningTimes = this.getValidMorningTimes();
+        ArrayList<Time> validAfternoonTimes = this.getValidAfternoonTimes();
+
+        for (int t = 0; t < validMorningTimes.size(); t++) {
+            validMorningTimes.set(t, validMorningTimes.get(t).plus(nineAM));
+            validAfternoonTimes.set(t, validAfternoonTimes.get(t).plus(onePM));
+        }
+
+        ArrayList<Time> validTimes = new ArrayList<>();
+        for (Time t : validAfternoonTimes)
+            validTimes.add(t);
+        for (Time t : validMorningTimes)
+            validTimes.add(t);
+        return validTimes;
     }
 
     /**
-     * randomly pick morning or afternoon with equal probability
+     * init array for index and prob vector
+     * iterate over number of activities
+     *      populate initialized index array with indexes
+     * @return
+     */
+    private Time randomlySampleTime() {
+        ArrayList<Integer> allPotentialIndexes = new ArrayList<>();
+        ArrayList<Double> probVec = new ArrayList<>();
+        for (int j = 0; j < activities.size(); j++) {
+            allPotentialIndexes.add(j);
+            probVec.add(1.0 / potentialStartTimes.size());
+        }
+        // randomly pick an index. Note we need the index to remove and sample without replacement
+        EnumeratedIntegerDistribution dist2 = new EnumeratedIntegerDistribution(
+                allPotentialIndexes.stream().mapToInt(Integer::intValue).toArray(),
+                probVec.stream().mapToDouble(Double::doubleValue).toArray());
+        int idx = dist2.sample();
+        Time timeAtIndex = potentialStartTimes.remove(idx);
+        System.out.println(timeAtIndex);
+        System.out.println();
+
+        return timeAtIndex;
+    }
+//        System.out.println(String.format("idx is %d. len %d, %d",
+//                idx, allPotentialIndexes.size()),
+//
+//                );
+//        Time time = potentialStartTimes.get(idx);
+//        potentialStartTimes.remove(time);
+//        allPotentialIndexes.remove(idx);
+//        System.out.println(allPotentialIndexes);
+//        return time;
+//    }
+
+    /**
      *
      * @return
      */
-    private HashMap<String, Time> sampleStartTime() {
-        HashMap<String, Time> result = new HashMap<>();
-
-        String session;
-        Time timeStart = new Time(0, 0, 0);
-        int values[] = {0, 1};
-        double probs[] = {0.5, 0.5};
-        EnumeratedIntegerDistribution dist = new EnumeratedIntegerDistribution(values, probs);
-        if (dist.sample() == 1) {
-            session = "morning";
-        } else {
-            session = "afternoon";
-        }
-        if (session.equals("morning"))
-            timeStart = new Time(9, 0, 0);
-        else if (session.equals("afternoon"))
-            timeStart = new Time(13, 0, 0);
-        else
-            try {
-                throw new Exception("bad");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        result.put(session, timeStart);
-        return result;
+    public int size() {
+        return this.activities.size();
     }
 
     /**
@@ -126,79 +188,44 @@ public class TimeTable {
      * @return
      */
     public ArrayList<Activity> randomlyAssignActivitiesToStartTimes() {
-        HashMap<String, ArrayList<Integer>> potentialStartTimes = this.getValidStartTimes();
+//        System.out.println(String.format("How many activities do we have? %d", activities.size()));
+//        System.out.println(String.format("What are the valid start times? %s", potentialStartTimes.toString()));
         ArrayList<Activity> newActivities = new ArrayList<>();
-        Time timeStart = new Time(0, 0, 0);
-        HashMap<String, Time> activityTimeStart;
+//        Time timeStart = new Time(0, 0, 0);
+//        HashMap<String, Time> activityTimeStart;
         int values[] = {0, 1};
         double probs[] = {0.5, 0.5};
-        // iterate over number of activities
-        for (int i = 0; i < activities.size(); i++) {
-
-            activityTimeStart = this.sampleStartTime();
-            String session = (String) activityTimeStart.keySet().toArray()[0];
-            Time startTime = (Time) activityTimeStart.values().toArray()[0];
-
-            // for each available time slot in chosen session, assign activity i
-            ArrayList<Integer> allPotentialIndexes = new ArrayList<>();
-            ArrayList<Double> probVec = new ArrayList<>();
-            for (int j = 0; j < activities.size(); j++) {
-                allPotentialIndexes.add(j);
-                probVec.add(1.0 / potentialStartTimes.get(session).size());
-            }
-            // randomly pick an index
-            EnumeratedIntegerDistribution dist2 = new EnumeratedIntegerDistribution(
-                    allPotentialIndexes.stream().mapToInt(Integer::intValue).toArray(),
-                    probVec.stream().mapToDouble(Double::doubleValue).toArray());
-
-            // get start time from chosen session
-            int idx = dist2.sample();
-            Integer activityStartTimeInMinutesAfterStartTime = potentialStartTimes.get(session).get(idx);
-            Time activityStartTime = startTime.add(new Time(0, activityStartTimeInMinutesAfterStartTime, 0));
-            activities.get(i).startTime = activityStartTime;
-            newActivities.add(activities.get(i));
-            activities.remove(i);
+        for (Activity activity : activities) {
+            activity.startTime = this.randomlySampleTime();
         }
-        return newActivities;
+        return activities;
     }
-
-    /**
-     * get the earliest time available in activities
-     *
-     * @param activities
-     * @return
-     */
-    public static Activity getEarliestTime(ArrayList<Activity> activities) {
-        Activity activity = activities.get(0);
-        if (activity.startTime.equals(null))
-            try {
-                throw new Exception("Cannot sort before schedules have been assigned");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        for (int i = 1; i < activities.size(); i++) {
-            Activity newActivity = activities.get(i);
-            if (newActivity.startTime.lt(activity.startTime)) {
-                activity = newActivity;
-            }
-        }
-        return activity;
-    }
-
-    /**
-     * adds up total overlapping minutes
-     * in start time assigments. Be careful to
-     * not include the same time twice.
-     * Include any time overlapping with forbidden slots.
-     */
-    public void computeScore() {
-
-    }
-
-
-    public int size() {
-        return this.activities.size();
-    }
-
 }
+
+//        /**
+//         * get the earliest time available in activities
+//         *
+//         * @param activities
+//         * @return
+//         */
+//        public void getEarliestTime() {
+//            Activity activity = activities.get(0);
+//            if (activity.startTime.equals(null))
+//                try {
+//                    throw new Exception("Cannot sort before schedules have been assigned");
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            for (int i = 1; i < activities.size(); i++) {
+//                Activity newActivity = activities.get(i);
+//                if (newActivity.startTime.lt(activity.startTime)) {
+//                    activity = newActivity;
+//                }
+//            }
+////            return activity;
+//        }
+//    }
+//}
+//
+//}
 
