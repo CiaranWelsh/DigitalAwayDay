@@ -467,18 +467,15 @@ class AlgorithmTests(unittest.TestCase):
     def test_random_agent(self):
 
         def episode(agent, env):
+            #todo problem is that after each iteration,
+            # all old rewards are recounted. May be able to calculate the
+            # contribution of current step on reward by subtractions
             done = False
             reward = 0
-            step_count = 0
             while not done:
-                step_count += 1
-                # print('step count', step_count)
                 actions = agent.get_action(env)
-                # print('actions chosen', actions)
-                # is the environment not updating after each iter?
-                r, done = env.step(actions)
 
-                # print(env.schedules[0], '\n')
+                r, done = env.step(actions)
                 reward += r
             return r
 
@@ -491,8 +488,10 @@ class AlgorithmTests(unittest.TestCase):
         best = None
         env = Env(self.activities, [self.lunch, self.talk])
         reward = episode(agent, env)
-        # print(reward)
-        print(env.schedules[0])
+        print(reward)
+        print(env.schedules[0], '\n')
+
+        print(env.schedules[1])
         # for i in range(niter):
         #     # maybe a reset method?
         #     new_env = env.reset()

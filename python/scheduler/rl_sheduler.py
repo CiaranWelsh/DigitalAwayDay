@@ -404,12 +404,12 @@ class Env:
         for i in range(self.n):
             if self.time_cursors[i] > self.end_time:
                 done[i] = True
-                continue
+                continue  # i is done, continue through for other n teams
             activity = a[i]
 
             if not self.schedules[i].slot_available(self.time_cursors[i], self.time_cursors[i] + activity.duration):
                 self.time_cursors[i] = self.time_cursors[i] + Time(0, self.greatest_common_divisor, 0)
-                continue
+                continue  ## bad time has been chosen, continue
 
             activity.start_time = self.time_cursors[i]
             self.schedules[i] = self.schedules[i].add_to_schedule(activity)
@@ -445,7 +445,7 @@ class Env:
         overlap_penalty = self._overlaps_with_other_teams_penalty()
 
         # if all equal to 0, then add 1
-        # print(p2, p3, p5)
+        print(over_used_penalty, overlap_penalty, unused_time_penalty)
         if over_used_penalty == 0 and overlap_penalty == 0 and unused_time_penalty == 0:
             r += 1
 
