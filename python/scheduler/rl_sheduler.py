@@ -155,6 +155,33 @@ class Schedule:
             activities = sorted(activities)
             return Schedule(activities)
 
+    def remove_from_schedule(self, activity, inplace=False):
+        """
+
+        :return:
+        """
+        if not isinstance(activity, Activity):
+            raise TypeError('Need an Activity object but got {}'.format(type(activity)))
+
+        if inplace:
+            idx = None
+            for i in range(len(self.activities)):
+                if self.activities[i] == activity:
+                    idx = i
+            if idx is not None:
+                del self.activities[idx]
+                self.activities = sorted(self.activities)
+        else:
+            idx = None
+            activities = deepcopy(self.activities)
+            for i in range(len(activities)):
+                if activities[i] == activity:
+                    idx = i
+            if idx is not None:
+                del activities[idx]
+                activities = sorted(activities)
+            return Schedule(activities)
+
     def get_activity_by_name(self, item):
         activity = None
         for i in self.activities:
@@ -179,6 +206,7 @@ class Schedule:
         s = ''
         for i in self.activities:
             s += f"{i.start_time} - {i.start_time + i.duration}: {i.name}\n"
+        s = s.strip()
         return s
 
     def __iter__(self):
@@ -189,6 +217,7 @@ class Schedule:
             self.current += 1
             return self.activities[self.current]
         except IndexError:
+            self.current = -1
             raise StopIteration
 
     def __contains__(self, item):
@@ -235,6 +264,83 @@ class Schedule:
                     total_overlap += x.overlaps_by(y).to_minutes()
         return total_overlap
 
+    def time_occupied(self, time):
+        """
+        If time is occupied by schedule return True
+        :param time:
+        :return:
+        """
+        for i in self:
+            if time > i.start_time and time < i.start_time + i.duration:
+                return True
+        return False
+
+    def get_used_time_slots(self):
+        return [
+            (i.start_time, i.start_time + i.duration) for i in self.activities
+        ]
+
+    def get_next_available_time(self, increment):
+        time = Time(9, 0, 0)
+        increment = Time(0, increment, 0)  # 15 minute increments as this is the smallest session
+        used_time_slots = self.get_used_time_slots()
+
+        def recursion(used_time_slots, time):
+            for start, end in used_time_slots:
+                done = False
+                while not done:
+                    if time.is_between(start, end):
+                        time = time + increment
+                    else:
+                        done = True
+                if time == end:
+                    continue
+                else:
+                    return time
+
+        time = recursion(used_time_slots, time)
+        return time
+
+    def slot_available(self, start_time, end_time):
+        print('calling slot available')
+        if start_time > end_time:
+            raise ValueError('start time "{}" cannot be later than end time "{}"'.format(
+                start_time, end_time
+            ))
+        available = True
+        # print('self from slot avail\n', self, '\n', len(self))
+        # I think the iterator is broken!!!!
+        for i in self:
+            # print('i from slot avail', i)
+            # print(start_time, i.start_time, i.start_time + i.duration, start_time > i.start_time)
+            if start_time >= i.start_time and \
+                    start_time < i.start_time + i.duration:
+                available = False
+            if end_time > i.start_time and end_time <= i.start_time + i.duration:
+                available = False
+
+        return available
+
+    def get_unused_time(self, early=Time(9, 0, 0), late=Time(17, 0, 0)):
+        """
+        return the amount of unused time between early and late
+
+        :param early:
+        :param late:
+        :return:
+        """
+        total_time = late - early
+        total_used = Time(0, 0, 0)
+        for i in self:
+            total_used = total_used + i.duration
+        if total_used > total_time:
+            return Time(0, 0, 0)
+        else:
+            return total_time - total_used
+
+    def get_earliest_time(self):
+        pass
+
 
 class Env:
     start_time = Time(9, 0, 0)
@@ -250,17 +356,38 @@ class Env:
         if not isinstance(self.fixed_slots, list):
             raise TypeError
 
-        self.activities = self.activities + self.fixed_slots
+        # self.activities = self.activities + self.fixed_slots
         self._activities_copy = deepcopy(self.activities)
         self.n = n
-        self.time_cursers = self._create_new_time_cursers()
+        self.time_cursors = self._create_new_time_cursors()
         self.schedules = self._create_new_schedules()
 
-    def _create_new_time_cursers(self):
+    @property
+    def greatest_common_divisor(self):
+        """
+        Use the smallest common factor of all activity durations
+        as the time increment
+        :return:
+        """
+
+        def gcd(a, b):
+            """Return greatest common divisor using Euclid's Algorithm."""
+            while b:
+                a, b = b, a % b
+            return a
+
+        def lcmm(*args):
+            """Return gcd of args."""
+            from functools import reduce
+            return reduce(gcd, args)
+
+        return int(lcmm(*[i.duration.to_minutes() for i in self.activities]))
+
+    def _create_new_time_cursors(self):
         return [Time(9, 0, 0)] * self.n
 
     def _create_new_schedules(self):
-        return [Schedule() for _ in range(self.n)]
+        return [Schedule(self.fixed_slots) for _ in range(self.n)]
 
     # def termination_criteria(self):
 
@@ -277,22 +404,38 @@ class Env:
         Also terminates the episode
         :return:
         """
+        c = 0
         r = 0
         done = [False] * self.n
+
+        # each step only goes to 2, one per schedule!!!
         for i in range(self.n):
-            if self.time_cursers[i] > self.end_time:
+            c += 1
+            # print(c)
+            if self.time_cursors[i] > self.end_time:
                 done[i] = True
+                # print('done is true')
+                continue
+            activity = a[i]
+
+            print(self.schedules[i], '\n')
+            print(self.time_cursors[i], self.time_cursors[i] + activity.duration)
+            print(self.schedules[i].slot_available(
+                self.time_cursors[i], self.time_cursors[i] + activity.duration
+            ))
+
+            activity.start_time = self.time_cursors[i]
+            self.schedules[i] = self.schedules[i].add_to_schedule(activity)
+            if not self.schedules[i].slot_available(activity.start_time,activity.start_time + activity.duration):
+                self.time_cursors[i] = self.time_cursors[i] + Time(0, self.greatest_common_divisor, 0)
                 continue
 
-            activity = a[i]
-            # add to schedule
-            activity.start_time = self.time_cursers[i]
-            self.schedules[i] = self.schedules[i].add_to_schedule(activity)
             r = self.compute_reward(activity)
-            self.time_cursers[i] = self.time_cursers[i] + activity.duration
+            self.time_cursors[i] = self.time_cursors[i] + activity.duration
 
         if all(done):
             done = True
+            # print('time cursers, done is true', self.time_cursors)
         else:
             done = False
 
@@ -309,40 +452,27 @@ class Env:
         """
         r = 0
         # first deal with penalties for lunch and talk not being present at the correct time
-        p1 = self._penalty1(activity)
+        # p1 = self._penalty1(activity)
         # Now give penalty for when a talk goes over into lunch or talk
-        p2 = self._penalty2(activity)
+        over_used_penalty = self._overused_time_penalty(activity)
+        unused_time_penalty = self._unused_time_penalty()
+
         # penalty for double booking
-        p3 = self._penalty3()
+        overlap_penalty = self._overlaps_with_other_teams_penalty()
 
         # if all equal to 0, then add 1
-        # print(p1, p2, p3)
-        if p1 == 0 and p2 == 0 and p3 == 0:
+        # print(p2, p3, p5)
+        if over_used_penalty == 0 and overlap_penalty == 0 and unused_time_penalty == 0:
             r += 1
 
-        r += p1
-        r += p2
-        r += p3
+        # r += p1
+        r += over_used_penalty
+        r += overlap_penalty
+        r += unused_time_penalty
 
         return r
 
-    def _penalty1(self, activity):
-        r = 0
-        if activity.name.lower() == 'lunch':
-            if activity.start_time != Time(12, 0, 0):
-                if activity.start_time > Time(12, 0, 0):
-                    x = activity.start_time - Time(12, 0, 0)
-                    r -= x.to_minutes()
-                elif activity.start_time < Time(12, 0, 0):
-                    x = Time(12, 0, 0) - activity.start_time
-                    r -= x.to_minutes()
-
-        if activity.name.lower() == 'talk':
-            if activity.start_time != Time(16, 0, 0):
-                r -= 100
-        return r
-
-    def _penalty2(self, activity):
+    def _overused_time_penalty(self, activity):
         r = 0
         lunch = Activity(name='lunch', start_time=Time(12, 0, 0), duration=Time(1, 0, 0))
         talk = Activity(name='talk', start_time=Time(16, 0, 0), duration=Time(1, 0, 0))
@@ -358,12 +488,45 @@ class Env:
             r -= extra.to_minutes()
         return r
 
-    def _penalty3(self):
+    def _overlaps_with_other_teams_penalty(self):
+        """
+        penalty for activities that are on at the same time for multiple teams,
+        returns the negative of the total amount of negative overlap
+        :return:
+        """
         r = 0
         combs = combinations(range(self.n), 2)
         for comb in combs:
             r -= self.schedules[comb[0]].overlaps_by(self.schedules[comb[1]])
         return r
+
+    def _penalty4(self):
+        for activity in self.activities:
+            # count the number of schedules containing activity
+            count = 0
+            for schedule in self.schedules:
+                if activity in schedule:
+                    count += 1
+            # if activity in both schedules, get the activity from both schedules
+            if count > 1:
+                schedule_activities = []
+                for schedule in self.schedules:
+                    # get the activity
+                    schedule_activities.append(
+                        schedule.get_activity_by_name(activity.name)
+                    )
+                    # but how does this generalise to the multiple
+                    # Maybe its better to go back to combinations like in penalty3
+
+    def _unused_time_penalty(self):
+        """
+        empty space penalty.
+        :return:
+        """
+        total_unused_time = Time(0, 0, 0)
+        for schedule in self.schedules:
+            total_unused_time = total_unused_time + schedule.get_unused_time()
+        return total_unused_time.to_minutes() * -1
 
     def valid_actions(self):
         l = []
@@ -378,7 +541,7 @@ class Env:
     def reset(self):
         self.activities = deepcopy(self._activities_copy)
         self.schedules = self._create_new_schedules()
-        self.time_cursers = self._create_new_time_cursers()
+        self.time_cursors = self._create_new_time_cursors()
 
 
 class Agent:
@@ -410,6 +573,7 @@ class RandomAgent(Agent):
         chosen = []
         for i in range(n):
             valid_actions = env.valid_actions()[i]
+
             chosen.append(choice(valid_actions))
         return chosen
 

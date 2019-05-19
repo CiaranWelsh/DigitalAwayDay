@@ -159,3 +159,10 @@ class Time:
 
     def to_minutes(self):
         return self.hours * 60 + self.minutes + self.seconds / 60
+
+    def is_between(self, start, end):
+        if start > end:
+            raise ValueError('start "{}" cannot be greater than end "{}"'.format(start, end))
+        if self >= start and self < end:
+            return True
+        return False

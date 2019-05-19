@@ -107,6 +107,18 @@ class TimeTests(unittest.TestCase):
         t2 = Time(9, 0, 1)
         self.assertLess(t1, t2)
 
+    def test_is_between(self):
+        t1 = Time(9, 0, 0)
+        t2 = Time(10, 0, 0)
+        t3 = Time(9, 30, 0)
+        self.assertTrue(t3.is_between(t1, t2))
+
+    def test_is_between2(self):
+        t1 = Time(9, 0, 0)
+        t2 = Time(10, 0, 0)
+        t3 = Time(9, 30, 0)
+        self.assertFalse(t2.is_between(t1, t3))
+
 
 class ActivityTests(unittest.TestCase):
 
@@ -216,6 +228,19 @@ class ScheduleTests(unittest.TestCase):
         activity = s.get_activity_by_name('Cheese gnawing')
         self.assertEqual(activity.name, 'Cheese gnawing')
 
+    def test_remove_from_schedule(self):
+        new_activity = Activity(
+            name='Cheese gnawing',
+            start_time=Time(13, 0, 0),
+            duration=Time(0, 30, 0)
+        )
+        s = Schedule(self.activities)
+
+        s = s.add_to_schedule(new_activity)
+        s = s.remove_from_schedule(new_activity)
+        self.assertNotIn(new_activity, s)
+
+
     def test_iter(self):
         s = Schedule(self.activities)
         passed = False
@@ -246,6 +271,96 @@ class ScheduleTests(unittest.TestCase):
         actual = s1.overlaps_by(s2)
         self.assertEqual(expected, actual)
 
+    def test_time_occupied(self):
+        s = Schedule(self.activities)
+        t = Time(9, 15, 0)
+        self.assertTrue(s.time_occupied(t))
+
+    def test_time_occupied2(self):
+        s = Schedule(self.activities)
+        t = Time(9, 50, 0)
+        self.assertFalse(s.time_occupied(t))
+
+    def test_time_occupied3(self):
+        s = Schedule(self.activities)
+        t = Time(9, 30, 0)
+        self.assertTrue(s.time_occupied(t))
+
+    def test_get_next_available_time(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        time = Time(11, 0, 0)
+        self.assertEqual(time, s.get_next_available_time())
+
+    def test_slot_available1(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        start = Time(9, 0, 0)
+        end = Time(9, 30, 0)
+        self.assertFalse(s.slot_available(start, end))
+
+    def test_slot_available2(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        start = Time(9, 15, 0)
+        end = Time(9, 30, 0)
+        self.assertFalse(s.slot_available(start, end))
+
+    def test_slot_available3(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        start = Time(13, 0, 0)
+        end = Time(13, 30, 0)
+        self.assertTrue(s.slot_available(start, end))
+
+    def test_slot_available4(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        start = Time(15, 45, 0)
+        end = Time(16, 15, 0)
+        self.assertFalse(s.slot_available(start, end))
+
+    def test_slot_available5(self):
+        """
+        :return:
+        """
+        a1 = Activity('a1', start_time=Time(9, 0, 0), duration=Time(0, 45, 0))
+        a2 = Activity('a2', start_time=Time(9, 45, 0), duration=Time(0, 40, 0))
+        a3 = Activity('a3', start_time=Time(10, 25, 0), duration=Time(1, 0, 0))
+        a4 = Activity('a4', start_time=Time(11, 25, 0), duration=Time(0, 15, 0))
+        a5 = Activity('a5', start_time=Time(12, 0, 0), duration=Time(1, 0, 0))
+        a6 = Activity('a6', start_time=Time(16, 0, 0), duration=Time(1, 0, 0))
+        s = Schedule([a1, a2, a3, a4, a5, a6])
+        self.assertFalse(s.slot_available(Time(11, 40, 0), Time(12, 10, 0)))
+
+    def test_slot_available6(self):
+        """
+        :return:
+        """
+        a1 = Activity('a1', start_time=Time(9, 0, 0), duration=Time(1, 0, 0))
+        a2 = Activity('a2', start_time=Time(10, 0, 0), duration=Time(0, 45, 0))
+        a3 = Activity('a3', start_time=Time(10, 45, 0), duration=Time(0, 45, 0))
+        a4 = Activity('a4', start_time=Time(11, 30, 0), duration=Time(0, 30, 0))
+        a5 = Activity('a5', start_time=Time(12, 0, 0), duration=Time(1, 0, 0))
+        a6 = Activity('a6', start_time=Time(16, 0, 0), duration=Time(1, 0, 0))
+        s = Schedule([a1, a2, a3, a4, a5, a6])
+        print(s)
+        x = s.slot_available(Time(13, 0, 0), Time(16, 1, 0))
+        print(x)
+
+    def test_empty_space(self):
+        s = Schedule(
+            self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
+        expected = Time(4, 0, 0)
+        self.assertEqual(expected, s.get_unused_time())
+
+    def test_empty_space2(self):
+
+        # get total unused time.
+        # get total overused time.
+        s = Schedule(self.activities)
+        expected = Time(4, 30, 0)
+        self.assertEqual(expected, s.get_unused_time())
 
 
 
@@ -294,7 +409,15 @@ class EnvTests(unittest.TestCase):
 
         e.compute_reward()
 
+    def test(self):
+        # build several configurations of two or more teams and test the penalties for accuracy.
+        pass
 
+    def test_greatest_common_divisor(self):
+        e = Env(self.activities, [self.lunch, self.talk])
+        expected = 5
+        actual = e.greatest_common_divisor
+        self.assertEqual(expected, actual)
 
 
 class AgentTests(unittest.TestCase):
@@ -320,6 +443,8 @@ class AgentTests(unittest.TestCase):
         print(a)
 
 
+
+
 class AlgorithmTests(unittest.TestCase):
 
     def setUp(self):
@@ -343,37 +468,47 @@ class AlgorithmTests(unittest.TestCase):
         def episode(agent, env):
             done = False
             reward = 0
+            step_count = 0
             while not done:
+                step_count += 1
+                # print('step count', step_count)
                 actions = agent.get_action(env)
+                # print('actions chosen', actions)
+                # is the environment not updating after each iter?
                 r, done = env.step(actions)
+
+                # print(env.schedules[0], '\n')
                 reward += r
             return r
 
-        niter = 10000
+        # is hte problem that I@m iteratig over self yet
+        # self is not yet dontaining the new activity ???
+
+        niter = 1
         agent = RandomAgent()
         rec = []
         best = None
         env = Env(self.activities, [self.lunch, self.talk])
         reward = episode(agent, env)
         # print(reward)
-        # print(env.schedules[0])
-        for i in range(niter):
-            # maybe a reset method?
-            new_env = env.reset()
-            # new_env = Env(self.activities, [self.lunch, self.talk])
-            new_reward = episode(agent, env)
-
-            if new_reward > reward:
-                env = new_env
-            # rec.append(reward)
-
-            if i % 100 == 0:
-                print(i, reward)
-
-        print('best reward ', reward)
-        print('schedule 1\n', env.schedules[0])
-        print('schedule 2\n ', env.schedules[1])
-        print('\n')
+        print(env.schedules[0])
+        # for i in range(niter):
+        #     # maybe a reset method?
+        #     new_env = env.reset()
+        #     # new_env = Env(self.activities, [self.lunch, self.talk])
+        #     new_reward = episode(agent, env)
+        #
+        #     if new_reward > reward:
+        #         env = new_env
+        #         reward = new_reward
+        #     # rec.append(reward)
+        #
+        #     if i % 100 == 0:
+        #         print(new_reward)
+        #         print(i, reward)
 
 
-
+        # print('best reward ', reward)
+        # print('schedule 1\n', env.schedules[0])
+        # print('schedule 2\n ', env.schedules[1])
+        # print('\n')
