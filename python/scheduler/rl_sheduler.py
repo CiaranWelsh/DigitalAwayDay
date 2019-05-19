@@ -302,21 +302,15 @@ class Schedule:
         return time
 
     def slot_available(self, start_time, end_time):
-        print('calling slot available')
         if start_time > end_time:
             raise ValueError('start time "{}" cannot be later than end time "{}"'.format(
                 start_time, end_time
             ))
         available = True
-        # print('self from slot avail\n', self, '\n', len(self))
-        # I think the iterator is broken!!!!
         for i in self:
-            # print('i from slot avail', i)
-            # print(start_time, i.start_time, i.start_time + i.duration, start_time > i.start_time)
-            if start_time >= i.start_time and \
-                    start_time < i.start_time + i.duration:
+            if start_time >= i.start_time and start_time < i.start_time + i.duration:
                 available = False
-            if end_time > i.start_time and end_time <= i.start_time + i.duration:
+            if end_time > i.start_time and end_time < i.start_time + i.duration:
                 available = False
 
         return available
@@ -404,31 +398,21 @@ class Env:
         Also terminates the episode
         :return:
         """
-        c = 0
         r = 0
         done = [False] * self.n
 
-        # each step only goes to 2, one per schedule!!!
         for i in range(self.n):
-            c += 1
-            # print(c)
             if self.time_cursors[i] > self.end_time:
                 done[i] = True
-                # print('done is true')
                 continue
             activity = a[i]
 
-            print(self.schedules[i], '\n')
-            print(self.time_cursors[i], self.time_cursors[i] + activity.duration)
-            print(self.schedules[i].slot_available(
-                self.time_cursors[i], self.time_cursors[i] + activity.duration
-            ))
+            if not self.schedules[i].slot_available(self.time_cursors[i], self.time_cursors[i] + activity.duration):
+                self.time_cursors[i] = self.time_cursors[i] + Time(0, self.greatest_common_divisor, 0)
+                continue
 
             activity.start_time = self.time_cursors[i]
             self.schedules[i] = self.schedules[i].add_to_schedule(activity)
-            if not self.schedules[i].slot_available(activity.start_time,activity.start_time + activity.duration):
-                self.time_cursors[i] = self.time_cursors[i] + Time(0, self.greatest_common_divisor, 0)
-                continue
 
             r = self.compute_reward(activity)
             self.time_cursors[i] = self.time_cursors[i] + activity.duration

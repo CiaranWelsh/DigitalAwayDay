@@ -311,6 +311,7 @@ class ScheduleTests(unittest.TestCase):
             self.activities + [Activity(name='bandit rushing', start_time=Time(9, 30, 0), duration=Time(0, 30, 0))])
         start = Time(13, 0, 0)
         end = Time(13, 30, 0)
+        print(s)
         self.assertTrue(s.slot_available(start, end))
 
     def test_slot_available4(self):
